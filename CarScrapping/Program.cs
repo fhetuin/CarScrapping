@@ -46,16 +46,9 @@ class Program
     public static async Task CreateDocument(Root root, Car car)
     {
 
-        string kilometrage = string.Empty;
-        string price = string.Empty;
-        try
-        {
-            kilometrage = (int.Parse(car.Miles.Replace(" ", "")) * 10).ToString();
-        }
-        catch
-        {
 
-        }
+        string price = string.Empty;
+        
         try
         {
             price = (root.Data.Price.Value * 0.090).ToString();
@@ -64,7 +57,7 @@ class Program
         {
 
         }
-        string fileName = $"{Directory.GetCurrentDirectory()}/pdf/{car.Brand}_{car.Model}_{car.GearBox}_{kilometrage}km_{price}.pdf";
+        string fileName = $"{Directory.GetCurrentDirectory()}/pdf/{car.Brand}_{car.Model}_{car.GearBox}_{car.Miles}km_{price}.pdf";
 
             // Create a Document object and set its margins
             Document document = new Document(PageSize.A4, 50, 50, 50, 50);
@@ -85,11 +78,12 @@ class Program
             cell.Border = iTextSharp.text.Rectangle.NO_BORDER;
             table.AddCell(new Phrase($"{root.Data.Subject}", FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 12)));
             table.AddCell($"Marque: {car.Brand}");
-            table.AddCell($"Motorisation: {car.Carburation}");
+        table.AddCell($"Modèle: {car.Model}");
+        table.AddCell($"Motorisation: {car.Carburation}");
             table.AddCell($"Boite de vitesse : {car.GearBox}");
             table.AddCell($"Prix: {price} €");
-            table.AddCell($"Kilométrage : {kilometrage}");
-            table.AddCell($"Modèle: {car.Model}");
+            table.AddCell($"Kilométrage : {car.Miles} km");
+
 
 
             int i = 1;
