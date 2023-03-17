@@ -77,12 +77,12 @@ class Program
             cell.Colspan = 2; 
             cell.Border = iTextSharp.text.Rectangle.NO_BORDER;
             table.AddCell(new Phrase($"{root.Data.Subject}", FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 12)));
-            table.AddCell($"Marque: {car.Brand}");
-        table.AddCell($"Modèle: {car.Model}");
-        table.AddCell($"Motorisation: {car.Carburation}");
-            table.AddCell($"Boite de vitesse : {car.GearBox}");
+            table.AddCell($"Marque: {car?.Brand}");
+        table.AddCell($"Modèle: {car?.Model}");
+        table.AddCell($"Motorisation: {car?.Carburation}");
+            table.AddCell($"Boite de vitesse : {car?.GearBox}");
             table.AddCell($"Prix: {price} €");
-            table.AddCell($"Kilométrage : {car.Miles} km");
+            table.AddCell($"Kilométrage : {car?.Miles} km");
 
 
 
@@ -129,37 +129,44 @@ class Program
     
     public static async Task<Car> GetCarFromApiAsync(string id)
     {
-        using HttpClient client = new HttpClient();
-        string url = $"https://api.blocket.se/motor-query-service/v1/view/legacy/{id}";
-        string jsonString = await Request.GetResultRequest(url);
-        JObject jsonData = JObject.Parse(jsonString);
+        try
+        {
+            using HttpClient client = new HttpClient();
+            string url = $"https://api.blocket.se/motor-query-service/v1/view/legacy/{id}";
+            string jsonString = await Request.GetResultRequest(url);
+            JObject jsonData = JObject.Parse(jsonString);
 
-        JArray tsDataArray = (JArray)jsonData["tsData"];
+            JArray tsDataArray = (JArray)jsonData["tsData"];
 
-        JObject basfaktaObject = tsDataArray.Children<JObject>()
-            .FirstOrDefault(o => o["label"].ToString() == "Basfakta");
+            JObject basfaktaObject = tsDataArray.Children<JObject>()
+                .FirstOrDefault(o => o["label"].ToString() == "Basfakta");
 
-        Car car = new Car();
-        car.Title = basfaktaObject["items"]
-            .FirstOrDefault(p => p["label"].ToString() == "Märke")["value"].ToString();
+            Car car = new Car();
+            car.Title = basfaktaObject["items"]
+                .FirstOrDefault(p => p["label"].ToString() == "Märke")["value"].ToString();
 
-        car.Brand = basfaktaObject["items"]
-            .FirstOrDefault(p => p["label"].ToString() == "Märke")["value"].ToString();
+            car.Brand = basfaktaObject["items"]
+                .FirstOrDefault(p => p["label"].ToString() == "Märke")["value"].ToString();
 
-        car.Carburation = basfaktaObject["items"]
-            .FirstOrDefault(p => p["label"].ToString() == "Drivmedel")["value"].ToString();
+            car.Carburation = basfaktaObject["items"]
+                .FirstOrDefault(p => p["label"].ToString() == "Drivmedel")["value"].ToString();
 
-        car.GearBox = basfaktaObject["items"]
-            .FirstOrDefault(p => p["label"].ToString() == "Växellåda")["value"].ToString();
+            car.GearBox = basfaktaObject["items"]
+                .FirstOrDefault(p => p["label"].ToString() == "Växellåda")["value"].ToString();
 
-        car.Miles = basfaktaObject["items"]
-            .FirstOrDefault(p => p["label"].ToString() == "Mätarställning")["value"].ToString();
+            car.Miles = basfaktaObject["items"]
+                .FirstOrDefault(p => p["label"].ToString() == "Mätarställning")["value"].ToString();
 
-        car.Model = basfaktaObject["items"]
-            .FirstOrDefault(p => p["label"].ToString() == "Modell")["value"].ToString();
+            car.Model = basfaktaObject["items"]
+                .FirstOrDefault(p => p["label"].ToString() == "Modell")["value"].ToString();
 
 
-        return car;
+            return car;
+        }
+        catch
+        {
+            return new Car();
+        }
     }
     
 

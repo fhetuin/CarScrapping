@@ -20,11 +20,18 @@ namespace CarScrapping
             if(!string.IsNullOrEmpty(bearerToken))
             req.Headers.Add("Authorization", $"Bearer {bearerToken}");
 
-            var res = await req.GetResponseAsync();
-            using (var reader = new StreamReader(res.GetResponseStream()))
-                result = await reader.ReadToEndAsync();
+            try
+            {
+                var res = await req.GetResponseAsync();
+                using (var reader = new StreamReader(res.GetResponseStream()))
+                    result = await reader.ReadToEndAsync();
 
-            return result;
+                return result;
+            }
+            catch
+            {
+                return string.Empty;
+            }
         }
     }
 }
