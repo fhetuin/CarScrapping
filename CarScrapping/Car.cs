@@ -15,6 +15,9 @@ namespace CarScrapping
         public string GearBox { get; set; }
         public string Miles { get; set; }
         public string Model { get; set; }
+        public string Price { get; set; }
+
+        public List<byte[]> Images { get; set; }
 
     }
 

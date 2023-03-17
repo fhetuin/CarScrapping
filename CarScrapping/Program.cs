@@ -1,27 +1,119 @@
 ﻿
 using CarScrapping;
+using iTextSharp.text;
+using iTextSharp.text.pdf;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using SixLabors.ImageSharp.Formats.Jpeg;
+using System;
+using System.Net;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
+using Image = CarScrapping.Image;
 
 class Program
 {
     static async Task Main(string[] args)
     {
-        Console.Write("Enter car ID: ");
-        var carId = Console.ReadLine();
-        var car = await GetCarFromApiAsync(carId);
+        await CheckDirectory("temp");
+        await CheckDirectory("pdf");
+        while (true)
+        {
+   
 
-        Console.WriteLine($"Title: {car.Title}");
-        Console.WriteLine($"Brand: {car.Brand}");
-        Console.WriteLine($"Carburation: {car.Carburation}");
-        Console.WriteLine($"GearBox: {car.GearBox}");
-        Console.WriteLine($"Miles: {car.Miles}");
-        Console.WriteLine($"Model: {car.Model}");
-        string token = await RefreshToken();
-        Root root = await GetRoot(carId, token);
-        Thread.Sleep(5000000);
+            Console.Write("Entrez un identifiant de voiture : ");
+            var carId = Console.ReadLine();
+            var car = await GetCarFromApiAsync(carId);
+            string token = await RefreshToken();
+            Root root = await GetRoot(carId, token);
+
+
+            await CreateDocument(root, car);
+
+        }
+    }
+
+    public static async Task CheckDirectory(string name)
+    {
+        string path = Path.Combine(Directory.GetCurrentDirectory(), name);
+        if (!Directory.Exists(path))
+        {
+            Directory.CreateDirectory(path);
+        }
+    }
+
+    public static async Task CreateDocument(Root root, Car car)
+    {
+
+        string kilometrage = string.Empty;
+        string price = string.Empty;
+        try
+        {
+            kilometrage = (int.Parse(car.Miles.Replace(" ", "")) * 10).ToString();
+        }
+        catch
+        {
+
+        }
+        try
+        {
+            price = (root.Data.Price.Value * 0.090).ToString();
+        }
+        catch
+        {
+
+        }
+        string fileName = $"{Directory.GetCurrentDirectory()}/pdf/{car.Brand}_{car.Model}_{car.GearBox}_{kilometrage}km_{price}.pdf";
+
+            // Create a Document object and set its margins
+            Document document = new Document(PageSize.A4, 50, 50, 50, 50);
+
+            // Create a PdfWriter object to write to the stream
+            PdfWriter writer = PdfWriter.GetInstance(document, new FileStream(fileName, FileMode.Create));
+
+            // Open the document
+            document.Open();
+
+            // Create a table to hold the data
+            PdfPTable table = new PdfPTable(1);
+            table.DefaultCell.Border = iTextSharp.text.Rectangle.NO_BORDER;
+
+            // Add the image to the first cell of the first row
+            PdfPCell cell = new PdfPCell();
+            cell.Colspan = 2; 
+            cell.Border = iTextSharp.text.Rectangle.NO_BORDER;
+            table.AddCell(new Phrase($"{root.Data.Subject}", FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 12)));
+            table.AddCell($"Marque: {car.Brand}");
+            table.AddCell($"Motorisation: {car.Carburation}");
+            table.AddCell($"Boite de vitesse : {car.GearBox}");
+            table.AddCell($"Prix: {price} €");
+            table.AddCell($"Kilométrage : {kilometrage}");
+            table.AddCell($"Modèle: {car.Model}");
+
+
+            int i = 1;
+            foreach (Image img in root.Data.Images)
+            {
+                string imgUrl = img.Url + ".webp?type=original";
+                using (WebClient client = new WebClient())
+                {
+                    byte[] data = client.DownloadData(imgUrl);
+                    using (SixLabors.ImageSharp.Image image = SixLabors.ImageSharp.Image.Load(data))
+                    {
+                        JpegEncoder encoder = new JpegEncoder();
+                        image.Save(Directory.GetCurrentDirectory() + "/temp/image_" + i + ".jpg", encoder);
+                        // Create an Image object from the file containing the image
+                        iTextSharp.text.Image pdfImage = iTextSharp.text.Image.GetInstance(Directory.GetCurrentDirectory() + "/temp/image_" + i + ".jpg");
+                        table.AddCell(pdfImage);
+                    }
+                }
+                i++;
+            }
+            // Add the table to the document
+            document.Add(table);
+        document.Close();
+        Console.WriteLine($"le fichier {fileName} a été généré");
     }
 
     public static async Task<string> RefreshToken()
@@ -37,12 +129,6 @@ class Program
         string url = $"https://api.blocket.se/search_bff/v2/content/{id}?include=store";
         string jsonString = await Request.GetResultRequest(url, token);
         Root root = JsonConvert.DeserializeObject<Root>(jsonString);
-        List<Image> images = root.Data.Images;
-        foreach(Image img in images)
-        {
-            Console.WriteLine(img.Url);
-        }
-        Console.WriteLine(root.Data.Subject);
         return root;
     }
         
@@ -77,6 +163,7 @@ class Program
 
         car.Model = basfaktaObject["items"]
             .FirstOrDefault(p => p["label"].ToString() == "Modell")["value"].ToString();
+
 
         return car;
     }
