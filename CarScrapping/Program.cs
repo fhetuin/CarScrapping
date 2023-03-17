@@ -10,6 +10,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Image = CarScrapping.Image;
 
 class Program
@@ -48,7 +49,7 @@ class Program
 
 
         string price = string.Empty;
-        
+        var p = root.Data.ParameterGroups.Where(p => p.Label.Equals("Allmän information")).FirstOrDefault().Parameters;
         try
         {
             price = (root.Data.Price.Value * 0.090).ToString();
@@ -57,7 +58,10 @@ class Program
         {
 
         }
-        string fileName = $"{Directory.GetCurrentDirectory()}/pdf/{car.Brand}_{car.Model}_{car.GearBox}_{car.Miles}km_{price}.pdf";
+
+        string fileName = car != null ? $"{Directory.GetCurrentDirectory()}/pdf/{car.Brand}_{car.Model}_{car.GearBox}_{car.Miles}km_{price}.pdf" :
+
+            $"{Directory.GetCurrentDirectory()}/pdf/{root.Data.Subject}.pdf";
 
             // Create a Document object and set its margins
             Document document = new Document(PageSize.A4, 50, 50, 50, 50);
@@ -77,16 +81,25 @@ class Program
             cell.Colspan = 2; 
             cell.Border = iTextSharp.text.Rectangle.NO_BORDER;
             table.AddCell(new Phrase($"{root.Data.Subject}", FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 12)));
+        if (car != null) {
             table.AddCell($"Marque: {car?.Brand}");
-        table.AddCell($"Modèle: {car?.Model}");
-        table.AddCell($"Motorisation: {car?.Carburation}");
-            table.AddCell($"Boite de vitesse : {car?.GearBox}");
-            table.AddCell($"Prix: {price} €");
+            table.AddCell($"Modèle: {car?.Model}");
+            table.AddCell($"Motorisation: {car?.Carburation}");
+            table.AddCell($"Boite de vitesse : {car?.GearBox}");          
             table.AddCell($"Kilométrage : {car?.Miles} km");
+   
+        }
+        else
+        {
+            table.AddCell($"Motorisation: {p?.Where(p => p.Label.Equals("Bränsle")).FirstOrDefault()?.Value}");
+            table.AddCell($"Boite de vitesse : {p?.Where(p => p.Label.Equals("Växellåda")).FirstOrDefault()?.Value}");
+            string miles = Regex.Replace(p?.Where(p => p.Label.Equals("Miltal")).FirstOrDefault()?.Value, @"\s+", "");
+            table.AddCell($"Kilométrage : {(int.Parse(miles) * 10).ToString() }");
+        }
+        table.AddCell($"Prix: {price} €");
+        table.AddCell($"Date de mise en circulation :  {p?.Where(p => p.Label.Equals("Modellår")).FirstOrDefault()?.Value}");
 
-
-
-            int i = 1;
+        int i = 1;
             foreach (Image img in root.Data.Images)
             {
                 string imgUrl = img.Url + ".webp?type=original";
@@ -160,12 +173,16 @@ class Program
             car.Model = basfaktaObject["items"]
                 .FirstOrDefault(p => p["label"].ToString() == "Modell")["value"].ToString();
 
+            car.Model = basfaktaObject["items"]
+                .FirstOrDefault(p => p["label"].ToString() == "Modell")["value"].ToString();
+
+
 
             return car;
         }
         catch
         {
-            return new Car();
+            return null;
         }
     }
     
