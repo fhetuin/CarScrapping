@@ -6,8 +6,10 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using System;
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Resources;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -19,6 +21,7 @@ class Program
     {
         await CheckDirectory("temp");
         await CheckDirectory("pdf");
+        ResourceManager resMgr = new ResourceManager(typeof(CarInfo));
         while (true)
         {
    
@@ -30,7 +33,7 @@ class Program
             Root root = await GetRoot(carId, token);
 
 
-            await CreateDocument(root, car);
+            await CreateDocument(root, car, resMgr);
 
         }
     }
@@ -44,21 +47,28 @@ class Program
         }
     }
 
-    public static async Task CreateDocument(Root root, Car car)
+    public static async Task CreateDocument(Root root, Car car, ResourceManager resMgr)
     {
 
 
         string price = string.Empty;
-        var p = root.Data.ParameterGroups.Where(p => p.Label.Equals("Allmän information")).FirstOrDefault().Parameters;
+        var p = root.Data.ParameterGroups.SelectMany(p=>p.Parameters);
+        string dateMec = string.Empty;
+        string gearBox = string.Empty;
+        string motor = string.Empty;
         try
         {
             price = (root.Data.Price.Value * 0.090).ToString();
         }
-        catch
+        catch { }
+        try
         {
-
+            dateMec = p.Where(p => p.Label.Equals("Datum i trafik")).FirstOrDefault()?.Value;
+            string dateString = dateMec.Replace("-", "/");
+            DateTime date = DateTime.ParseExact(dateString, "yyyy/MM/dd", CultureInfo.InvariantCulture);
+            dateMec = date.ToString("dd/MM/yyyy");
         }
-
+        catch { }
         string fileName = car != null ? $"{Directory.GetCurrentDirectory()}/pdf/{car.Brand}_{car.Model}_{car.GearBox}_{car.Miles}km_{price}.pdf" :
 
             $"{Directory.GetCurrentDirectory()}/pdf/{root.Data.Subject}.pdf";
@@ -84,20 +94,23 @@ class Program
         if (car != null) {
             table.AddCell($"Marque: {car?.Brand}");
             table.AddCell($"Modèle: {car?.Model}");
-            table.AddCell($"Motorisation: {car?.Carburation}");
-            table.AddCell($"Boite de vitesse : {car?.GearBox}");          
+            motor = car?.Carburation;
+            gearBox = car?.GearBox;       
             table.AddCell($"Kilométrage : {car?.Miles} km");
    
         }
         else
         {
-            table.AddCell($"Motorisation: {p?.Where(p => p.Label.Equals("Bränsle")).FirstOrDefault()?.Value}");
-            table.AddCell($"Boite de vitesse : {p?.Where(p => p.Label.Equals("Växellåda")).FirstOrDefault()?.Value}");
+            motor = p?.Where(p => p.Label.Equals("Bränsle")).FirstOrDefault()?.Value;
+            gearBox = p?.Where(p => p.Label.Equals("Växellåda")).FirstOrDefault()?.Value;
             string miles = Regex.Replace(p?.Where(p => p.Label.Equals("Miltal")).FirstOrDefault()?.Value, @"\s+", "");
-            table.AddCell($"Kilométrage : {(int.Parse(miles) * 10).ToString() }");
+            table.AddCell($"Kilométrage : {(int.Parse(miles) * 10) } km");
         }
-        table.AddCell($"Prix: {price} €");
-        table.AddCell($"Date de mise en circulation :  {p?.Where(p => p.Label.Equals("Modellår")).FirstOrDefault()?.Value}");
+
+        table.AddCell($"Motorisation: {resMgr.GetString(motor) ?? motor}");
+        table.AddCell($"Boite de vitesse : {resMgr.GetString(gearBox) ??gearBox}");
+        table.AddCell($"Prix: {price} € (varie selon le taux de change SEK/EURO, prix non négocié pour le moment +2500€)");
+        table.AddCell($"Date de mise en circulation :  {(string.IsNullOrEmpty(dateMec) ? p?.Where(p => p.Label.Equals("Modellår")).FirstOrDefault()?.Value : dateMec)}");
 
         int i = 1;
             foreach (Image img in root.Data.Images)
