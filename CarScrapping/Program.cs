@@ -109,7 +109,7 @@ class Program
 
         table.AddCell($"Motorisation: {resMgr.GetString(motor) ?? motor}");
         table.AddCell($"Boite de vitesse : {resMgr.GetString(gearBox) ??gearBox}");
-        table.AddCell($"Prix: {price} € (varie selon le taux de change SEK/EURO, prix non négocié pour le moment +2500€)");
+        table.AddCell($"Prix: {price} € varie selon le taux de change SEK/EURO, prix non négocié pour le moment +2500€ \n (Frais de rapatriement inclus + plaques WW valable 4 mois + forfait de courtage)");
         table.AddCell($"Date de mise en circulation :  {(string.IsNullOrEmpty(dateMec) ? p?.Where(p => p.Label.Equals("Modellår")).FirstOrDefault()?.Value : dateMec)}");
 
         int i = 1;
